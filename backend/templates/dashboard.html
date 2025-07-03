@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8" />
+    <title>Dashboard Interaktywny</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    
+    <!-- Bootstrap CDN -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+    
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        body {
+            background-color: #121417; /* ciemne tło */
+            color: #e0e0e0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        h1, h4 {
+            color: #fafafa;
+        }
+        .card {
+            margin-bottom: 2rem;
+            background: #1f2228;
+            border-radius: 12px;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.7);
+            padding: 20px;
+            transition: box-shadow 0.3s ease;
+        }
+        .card:hover {
+            box-shadow: 0 10px 35px rgba(0, 0, 0, 0.85);
+        }
+        .list-group-item {
+            background: #292c33;
+            color: #e0e0e0;
+            font-size: 1.1rem;
+            border: none;
+        }
+        table {
+            font-size: 1rem;
+            background: #292c33;
+            color: #e0e0e0;
+            border-radius: 8px;
+        }
+        table thead {
+            background: #3b3f4a;
+        }
+        /* Responsywność tabeli na małych ekranach */
+        @media (max-width: 576px) {
+            table thead {
+                display: none;
+            }
+            table, table tbody, table tr, table td {
+                display: block;
+                width: 100%;
+            }
+            table tr {
+                margin-bottom: 1rem;
+                border-bottom: 2px solid #444;
+            }
+            table td {
+                text-align: right;
+                padding-left: 50%;
+                position: relative;
+            }
+            table td::before {
+                content: attr(data-label);
+                position: absolute;
+                left: 1rem;
+                width: 45%;
+                padding-left: 15px;
+                font-weight: bold;
+                text-align: left;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container my-5">
+    <h1 class="mb-4">Dashboard Interaktywny</h1>
+
+    <div class="row g-4">
+        <div class="col-md-4">
+            <div class="card">
+                <h4>Statystyki ogólne</h4>
+                <ul class="list-group list-group-flush">
+                    <li class="list-group-item">Użytkownicy: <strong id="usersCount">420</strong></li>
+                    <li class="list-group-item">Zamówienia: <strong id="ordersCount">98</strong></li>
+                    <li class="list-group-item">Odwiedziny: <strong id="visitsCount">5600</strong></li>
+                    <li class="list-group-item">Przychód: <strong id="revenueCount">$12,400</strong></li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="col-md-8">
+            <div class="card">
+                <h4>Odwiedziny w ciągu tygodnia</h4>
+                <canvas id="visitsChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-md-6">
+            <div class="card">
+                <h4>Sprzedaż według kategorii</h4>
+                <canvas id="categoryPieChart"></canvas>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card">
+                <h4>Przychód miesięczny</h4>
+                <canvas id="revenueLineChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h4>Ostatnie zamówienia</h4>
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>#ID</th>
+                    <th>Produkt</th>
+                    <th>Ilość</th>
+                    <th>Cena</th>
+                </tr>
+            </thead>
+            <tbody id="ordersTableBody">
+                <!-- Dane dodane przez JS -->
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    // Przykładowe dane zamówień
+    const recentOrders = [
+        {id: 1, product: "Laptop", quantity: 1, price: "$1200"},
+        {id: 2, product: "Smartfon", quantity: 2, price: "$1600"},
+        {id: 3, product: "Tablet", quantity: 1, price: "$600"},
+        {id: 4, product: "Słuchawki", quantity: 3, price: "$150"},
+        {id: 5, product: "Monitor", quantity: 1, price: "$350"},
+        {id: 6, product: "Klawiatura", quantity: 4, price: "$400"},
+        {id: 7, product: "Mysz", quantity: 5, price: "$250"},
+    ];
+
+    // Wypełniamy tabelę zamówień
+    const tableBody = document.getElementById('ordersTableBody');
+    recentOrders.forEach(order => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td data-label="#ID">${order.id}</td>
+            <td data-label="Produkt">${order.product}</td>
+            <td data-label="Ilość">${order.quantity}</td>
+            <td data-label="Cena">${order.price}</td>
+        `;
+        tableBody.appendChild(tr);
+    });
+
+    // Wykres odwiedzin (słupkowy)
+    const ctxVisits = document.getElementById('visitsChart').getContext('2d');
+    const visitsChart = new Chart(ctxVisits, {
+        type: 'bar',
+        data: {
+            labels: ['Pon', 'Wt', 'Śr', 'Czw', 'Pt', 'Sob', 'Nd'],
+            datasets: [{
+                label: 'Liczba odwiedzin',
+                data: [350, 420, 400, 460, 580, 520, 620],
+                backgroundColor: 'rgba(54, 162, 235, 0.7)',
+                borderColor: 'rgba(54, 162, 235, 1)',
+                borderWidth: 1,
+                borderRadius: 5,
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: { labels: { font: { size: 14 } } },
+                tooltip: { enabled: true, mode: 'index', intersect: false }
+            },
+            scales: {
+                y: { beginAtZero: true, title: { display: true, text: 'Odwiedziny' } },
+                x: { title: { display: true, text: 'Dzień tygodnia' } }
+            }
+        }
+    });
+
+    // Wykres kołowy kategorii sprzedaży
+    const ctxCategoryPie = document.getElementById('categoryPieChart').getContext('2d');
+    const categoryPieChart = new Chart(ctxCategoryPie, {
+        type: 'pie',
+        data: {
+            labels: ['Elektronika', 'Moda', 'Dom', 'Sport', 'Inne'],
+            datasets: [{
+                label: 'Sprzedaż według kategorii',
+                data: [45, 25, 15, 10, 5],
+                backgroundColor: [
+                    'rgba(255, 99, 132, 0.7)',
+                    'rgba(54, 162, 235, 0.7)',
+                    'rgba(255, 206, 86, 0.7)',
+                    'rgba(75, 192, 192, 0.7)',
+                    'rgba(153, 102, 255, 0.7)'
+                ],
+                borderColor: [
+                    'rgba(255, 99, 132, 1)',
+                    'rgba(54, 162, 235, 1)',
+                    'rgba(255, 206, 86, 1)',
+                    'rgba(75, 192, 192, 1)',
+                    'rgba(153, 102, 255, 1)'
+                ],
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: { position: 'right', labels: { font: { size: 14 } } },
+                tooltip: { enabled: true }
+            }
+        }
+    });
+
+    // Wykres liniowy przychodu miesięcznego
+    const ctxRevenueLine = document.getElementById('revenueLineChart').getContext('2d');
+    const revenueLineChart = new Chart(ctxRevenueLine, {
+        type: 'line',
+        data: {
+            labels: ['Sty', 'Lut', 'Mar', 'Kwi', 'Maj', 'Cze', 'Lip', 'Sie', 'Wrz', 'Paź', 'Lis', 'Gru'],
+            datasets: [{
+                label: 'Przychód ($)',
+                data: [1000, 1200, 1400, 1600, 2000, 2400, 2800, 2600, 3000, 3200, 3500, 4000],
+                fill: true,
+                backgroundColor: 'rgba(75, 192, 192, 0.3)',
+                borderColor: 'rgba(75, 192, 192, 1)',
+                borderWidth: 2,
+                tension: 0.3,
+                pointRadius: 4,
+                pointHoverRadius: 6,
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: { labels: { font: { size: 14 } } },
+                tooltip: { enabled: true }
+            },
+            scales: {
+                y: {
+                    beginAtZero: false,
+                    title: { display: true, text: 'Przychód w dolarach' }
+                },
+                x: {
+                    title: { display: true, text: 'Miesiąc' }
+                }
+            }
+        }
+    });
+</script>
+
+</body>
+</html>
